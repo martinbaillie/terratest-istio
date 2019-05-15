@@ -1,0 +1,121 @@
+---
+version: 2.1
+
+orbs:
+  go: gotest/tools@0.0.9
+
+workflows:
+  ci:
+    jobs:
+      - go/lint
+      - test-golang-1-11:
+          name: test-golang-1-11
+      - test-golang-1-12:
+          name: test-golang-1-12
+
+commands:
+  integration_test:
+    parameters:
+      go_version:
+        type: string
+        default: "1.12"
+    steps:
+      - run:
+          name: "Fixing directory ownership"
+          command: |
+            sudo chown -R circleci:circleci /usr/local/bin
+      - run:
+          name: "Removing existing Go distribution"
+          command: |
+            sudo rm -rf /usr/go/* /usr/local/go/*
+      - restore_cache:
+          key: terratest-istio-v<< parameters.go_version >>-{{ checksum "go.sum" }}
+      - run:
+          name: "Installing Go"
+          working_directory: /tmp
+          command: |
+            go version 2>/dev/null | grep -q << parameters.go_version >> && (echo "cached" && exit)
+            wget https://dl.google.com/go/go<< parameters.go_version >>.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go<< parameters.go_version >>.linux-amd64.tar.gz
+      - run:
+          name: "Caching Go modules"
+          command: |
+            go mod download
+            go test -c ./... && rm *.test
+      - run:
+          name: "Installing gotestsum"
+          command: |
+            command -v gotestsum && (echo "cached" && exit)
+            curl -sSL https://github.com/gotestyourself/gotestsum/releases/download/v0.3.3/gotestsum_0.3.3_linux_amd64.tar.gz | tar xzv gotestsum
+            sudo mv gotestsum /usr/local/bin
+      - run:
+          name: "Installing KinD"
+          command: |
+            command -v kind && (echo "cached" && exit)
+            curl -sSLo kind https://github.com/kubernetes-sigs/kind/releases/download/0.2.1/kind-linux-amd64
+            chmod +x kind
+            sudo mv kind /usr/local/bin
+      - run:
+          name: "Installing kubectl"
+          command: |
+            command -v kubectl && (echo "cached" && exit)
+            curl -sSLO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin
+      - run:
+          name: "Installing helm"
+          command: |
+            command -v helm && (echo "cached" && exit)
+            curl -sSL https://storage.googleapis.com/kubernetes-helm/helm-v2.13.1-linux-amd64.tar.gz | tar xzv linux-amd64/helm
+            sudo mv linux-amd64/helm /usr/local/bin
+            rm -rf linux-amd64
+      - save_cache:
+          key: terratest-istio-v<< parameters.go_version >>-{{ checksum "go.sum" }}
+          paths:
+            - "/home/circleci/.cache"
+            - "/home/circleci/.go_workspace"
+            - "/usr/local/go"
+            - "/usr/local/bin/kubectl"
+            - "/usr/local/bin/kind"
+            - "/usr/local/bin/helm"
+            - "/usr/local/bin/gotestsum"
+      - run:
+          name: "Setting up integration environment"
+          command: |
+            hack/kind.sh setup >> $BASH_ENV
+            source $BASH_ENV
+            hack/istio.sh setup
+      - run:
+          name: "Executing integration tests"
+          environment:
+            GOTESTSUM_JUNITFILE: /tmp/tests/junit.xml
+            GOTESTTAGS: -tags integration -coverprofile=coverage.txt
+          command: |
+            source $BASH_ENV
+            mkdir -p /tmp/tests/
+            gotestsum -f short-verbose  -- $GOTESTTAGS ./...
+      - store_test_results:
+          path: /tmp/tests/
+      - run:
+          name: "Uploading code coverage results"
+          shell: /bin/bash -eo pipefail
+          command: |
+            bash <(curl -s https://codecov.io/bash)
+
+jobs:
+  test-golang-1-12:
+    machine:
+      enabled: true
+      docker_layer_caching: true
+    steps:
+      - checkout
+      - integration_test:
+          go_version: "1.12.5"
+  test-golang-1-11:
+    machine:
+      enabled: true
+      docker_layer_caching: true
+    steps:
+      - checkout
+      - integration_test:
+          go_version: "1.11.10"
