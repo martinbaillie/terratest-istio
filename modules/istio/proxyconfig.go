@@ -5,42 +5,36 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/logger"
-
 	"github.com/stretchr/testify/require"
 
 	"istio.io/istio/istioctl/pkg/kubernetes"
 	"istio.io/istio/istioctl/pkg/util/configdump"
 	"istio.io/istio/pilot/pkg/model"
 
-	adminapi "github.com/envoyproxy/go-control-plane/envoy/admin/v2alpha"
-	api "github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	adminv2 "github.com/envoyproxy/go-control-plane/envoy/admin/v2alpha"
+	apiv2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	wconfigdump "istio.io/istio/istioctl/pkg/writer/envoy/configdump"
 )
 
 // GetBootstrapConfigDumpForPod queries the pod's Envoy sidecar for currently
 // configured bootstrap. If anything goes wrong, the function will
 // automatically fail the test.
-// NOTE: https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-bootstrapconfigdump
+// NOTE:
+// https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-bootstrapconfigdump
 func GetBootstrapConfigDumpForPod(
-	t *testing.T,
-	options *Options,
-	pod string,
-) *adminapi.BootstrapConfigDump {
-	d, err := GetBootstrapConfigDumpForPodE(t, options, pod)
+	t *testing.T, o *Options, pod string) *adminv2.BootstrapConfigDump {
+	d, err := GetBootstrapConfigDumpForPodE(t, o, pod)
 	require.NoError(t, err)
 	return d
 }
 
 // GetBootstrapConfigDumpForPodE queries the pod's Envoy sidecar for currently
 // configured bootstrap.
-// NOTE: https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-bootstrapconfigdump
+// NOTE:
+// https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-bootstrapconfigdump
 func GetBootstrapConfigDumpForPodE(
-	t *testing.T,
-	options *Options,
-	pod string,
-) (
-	*adminapi.BootstrapConfigDump, error) {
-	cw, err := configDumpForPod(t, options, pod)
+	t *testing.T, o *Options, pod string) (*adminv2.BootstrapConfigDump, error) {
+	cw, err := configDumpForPod(t, o, pod)
 	if err != nil {
 		return nil, err
 	}
@@ -52,26 +46,19 @@ func GetBootstrapConfigDumpForPodE(
 // configured clusters. If anything goes wrong, the function will
 // automatically fail the test.
 // NOTE: https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-clustersconfigdump
-func GetClustersConfigDumpForPod(
-	t *testing.T,
-	options *Options,
-	pod string,
-) *adminapi.ClustersConfigDump {
-	d, err := GetClustersConfigDumpForPodE(t, options, pod)
+func GetClustersConfigDumpForPod(t *testing.T, o *Options, pod string) *adminv2.ClustersConfigDump {
+	d, err := GetClustersConfigDumpForPodE(t, o, pod)
 	require.NoError(t, err)
 	return d
 }
 
 // GetClustersConfigDumpForPodE queries the pod's Envoy sidecar for currently
 // configured clusters.
-// NOTE: https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-clustersconfigdump
+// NOTE:
+// https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-clustersconfigdump
 func GetClustersConfigDumpForPodE(
-	t *testing.T,
-	options *Options,
-	pod string,
-) (
-	*adminapi.ClustersConfigDump, error) {
-	cw, err := configDumpForPod(t, options, pod)
+	t *testing.T, o *Options, pod string) (*adminv2.ClustersConfigDump, error) {
+	cw, err := configDumpForPod(t, o, pod)
 	if err != nil {
 		return nil, err
 	}
@@ -84,25 +71,19 @@ func GetClustersConfigDumpForPodE(
 // automatically fail the test.
 // NOTE: https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-listenersconfigdump
 func GetListenersConfigDumpForPod(
-	t *testing.T,
-	options *Options,
-	pod string,
-) *adminapi.ListenersConfigDump {
-	d, err := GetListenersConfigDumpForPodE(t, options, pod)
+	t *testing.T, o *Options, pod string) *adminv2.ListenersConfigDump {
+	d, err := GetListenersConfigDumpForPodE(t, o, pod)
 	require.NoError(t, err)
 	return d
 }
 
 // GetListenersConfigDumpForPodE queries the pod's Envoy sidecar for currently
 // configured listeners.
-// NOTE: https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-listenersconfigdump
+// NOTE:
+// https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-listenersconfigdump
 func GetListenersConfigDumpForPodE(
-	t *testing.T,
-	options *Options,
-	pod string,
-) (
-	*adminapi.ListenersConfigDump, error) {
-	cw, err := configDumpForPod(t, options, pod)
+	t *testing.T, o *Options, pod string) (*adminv2.ListenersConfigDump, error) {
+	cw, err := configDumpForPod(t, o, pod)
 	if err != nil {
 		return nil, err
 	}
@@ -113,27 +94,21 @@ func GetListenersConfigDumpForPodE(
 // GetRoutesConfigDumpForPod queries the pod's Envoy sidecar for currently
 // configured routes. If anything goes wrong, the function will automatically
 // fail the test.
-// NOTE: https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-routesconfigdump
-func GetRoutesConfigDumpForPod(
-	t *testing.T,
-	options *Options,
-	pod string,
-) *adminapi.RoutesConfigDump {
-	d, err := GetRoutesConfigDumpForPodE(t, options, pod)
+// NOTE:
+// https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-routesconfigdump
+func GetRoutesConfigDumpForPod(t *testing.T, o *Options, pod string) *adminv2.RoutesConfigDump {
+	d, err := GetRoutesConfigDumpForPodE(t, o, pod)
 	require.NoError(t, err)
 	return d
 }
 
 // GetRoutesConfigDumpForPodE queries the pod's Envoy sidecar for currently
 // configured routes.
-// NOTE: https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-routesconfigdump
+// NOTE:
+// https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-routesconfigdump
 func GetRoutesConfigDumpForPodE(
-	t *testing.T,
-	options *Options,
-	pod string,
-) (
-	*adminapi.RoutesConfigDump, error) {
-	cw, err := configDumpForPod(t, options, pod)
+	t *testing.T, o *Options, pod string) (*adminv2.RoutesConfigDump, error) {
+	cw, err := configDumpForPod(t, o, pod)
 	if err != nil {
 		return nil, err
 	}
@@ -145,10 +120,7 @@ func GetRoutesConfigDumpForPodE(
 // that matches the specific fqdn, subset, direction and port combination. The
 // zero value is treated like a wildcard.
 func IsClustersConfigClusteredTo(
-	config *adminapi.ClustersConfigDump,
-	fqdn, subset, direction string,
-	port int,
-) bool {
+	config *adminv2.ClustersConfigDump, fqdn, subset, direction string, port int) bool {
 	filter := &wconfigdump.ClusterFilter{
 		FQDN:      model.Hostname(fqdn),
 		Subset:    subset,
@@ -175,10 +147,7 @@ func IsClustersConfigClusteredTo(
 // on the specific protocol type, address and port combination. The zero value
 // is treated like a wildcard.
 func IsListenersConfigListeningOn(
-	config *adminapi.ListenersConfigDump,
-	listenerType, listenerAddr string,
-	listenerPort int,
-) bool {
+	config *adminv2.ListenersConfigDump, listenerType, listenerAddr string, listenerPort int) bool {
 	filter := &wconfigdump.ListenerFilter{
 		Type:    listenerType,
 		Address: listenerAddr,
@@ -202,13 +171,10 @@ func IsListenersConfigListeningOn(
 
 // IsRoutesConfigRoutingTo returns true if the Envoy config has a route
 // that involves the specific host and port combination. The more identifiable
-// virtual host name, rather than route name, is used for comparison. See:
+// virtual host name, rather than route name, is used for comparison.
+// NOTE:
 // https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/route/route.proto#envoy-api-msg-route-virtualhost
-func IsRoutesConfigRoutingTo(
-	config *adminapi.RoutesConfigDump,
-	host string,
-	port int,
-) bool {
+func IsRoutesConfigRoutingTo(config *adminv2.RoutesConfigDump, host string, port int) bool {
 	var vhostName string
 	if port > 0 {
 		vhostName = fmt.Sprintf("%s:%d", host, port)
@@ -233,7 +199,7 @@ func IsRoutesConfigRoutingTo(
 
 // routeConfigVHostNameMatches returns true when the name parameter is found in
 // the route config.
-func routeConfigVHostNameMatches(routeConfig *api.RouteConfiguration, vhostName string) bool {
+func routeConfigVHostNameMatches(routeConfig *apiv2.RouteConfiguration, vhostName string) bool {
 	if routeConfig != nil {
 		for _, vhost := range routeConfig.VirtualHosts {
 			if vhost.Name == vhostName {
@@ -245,20 +211,20 @@ func routeConfigVHostNameMatches(routeConfig *api.RouteConfiguration, vhostName 
 }
 
 // configDumpForPod dumps the Istio Envoy proxy configuration for a pod.
-func configDumpForPod(t *testing.T, options *Options, pod string) (*configdump.Wrapper, error) {
+func configDumpForPod(t *testing.T, o *Options, pod string) (*configdump.Wrapper, error) {
 	t.Helper()
 
-	if options == nil {
-		options = NewOptions("", "")
+	if o == nil {
+		o = NewOptions("", "")
 	}
 
-	kubeClient, err := kubernetes.NewClient(options.ConfigPath, options.ContextName)
+	kubeClient, err := kubernetes.NewClient(o.ConfigPath, o.ContextName)
 	if err != nil {
 		return nil, err
 	}
 
 	logger.Logf(t, "Gathering proxy config dump from Envoy sidecar of pod: %s", pod)
-	b, err := kubeClient.EnvoyDo(pod, options.Namespace, "GET", "config_dump", nil)
+	b, err := kubeClient.EnvoyDo(pod, o.Namespace, "GET", "config_dump", nil)
 	if err != nil {
 		return nil, err
 	}

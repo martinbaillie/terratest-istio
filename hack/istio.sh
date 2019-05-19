@@ -5,10 +5,26 @@ set -e
 # Setup:    istio.sh setup
 # Teardown: istio.sh teardown
 
+# Default to the version of the repo Go module.
+: "${ISTIO_VERSION:="gomod"}"
+
 prepare() {
-    # Change directory to Istio module
-    cd "$(go mod download -json | \
-        jq -r 'select([.Path == "istio.io/istio"] | any) | .Dir')"
+    if [ "${ISTIO_VERSION}" = "gomod" ]; then
+        # Change directory to Istio module and use it
+        cd "$(go mod download -json | \
+            jq -r 'select([.Path == "istio.io/istio"] | any) | .Dir')"
+    else
+        # Use the specified Istio version
+        cd "$(mktemp -d /tmp/istio.XXXXXX)" 
+        if ! (git clone --depth 1 --branch "${ISTIO_VERSION}" \
+            https://github.com/istio/istio) >&2
+        then
+            >&2 echo "Istio download failed"
+            exit 1
+        fi
+        cd istio
+        echo "Testing against specific Istio version: ${ISTIO_VERSION}"
+    fi
 
     # Ensure cluster is ready
     if ! kubectl cluster-info > /dev/null; then
@@ -27,22 +43,30 @@ setup() {
 	fi
 
     # Install Istio CRDs
-    helm template install/kubernetes/helm/istio-init \
-        --name istio-init \
-        --namespace istio-system | \
-        kubectl apply -f -
-    kubectl wait job/istio-init-crd-10 \
-        -n istio-system \
-        --for=condition=complete \
-        --timeout 5m
-    kubectl wait job/istio-init-crd-11 \
-        -n istio-system \
-        --for=condition=complete \
-        --timeout 5m
-    kubectl wait job/istio-init-crd-12 \
-        -n istio-system \
-        --for=condition=complete \
-        --timeout 5m
+    if echo "${ISTIO_VERSION}" | grep -qe '1\.0\..*'; then
+        # 1.0 stream
+        kubectl apply -f \
+            install/kubernetes/helm/istio/templates/crds.yaml
+        sleep 10
+    else
+        # 1.1+ stream
+        helm template install/kubernetes/helm/istio-init \
+            --name istio-init \
+            --namespace istio-system | \
+            kubectl apply -f -
+        kubectl wait job/istio-init-crd-10 \
+            -n istio-system \
+            --for=condition=complete \
+            --timeout 5m
+        kubectl wait job/istio-init-crd-11 \
+            -n istio-system \
+            --for=condition=complete \
+            --timeout 5m
+        kubectl wait job/istio-init-crd-12 \
+            -n istio-system \
+            --for=condition=complete \
+            --timeout 5m
+    fi
 
     # Install Istio 
     helm template install/kubernetes/helm/istio \
@@ -73,10 +97,15 @@ setup() {
     kubectl wait deployment/productpage-v1 \
 		--for=condition=available \
 		--timeout 5m
-	kubectl exec -it "$(kubectl get pod -l app=ratings \
-		-o jsonpath='{.items[0].metadata.name}')" \
-		-c ratings -- \
-		curl productpage:9080/productpage | grep -qo "<title>.*</title>"
+
+
+    # TODO: figure out why this check doesn't work on the Istio 1.0 stream
+    if ! (echo "${ISTIO_VERSION}" | grep -qe '1\.0\..*'); then
+        kubectl exec -it "$(kubectl get pod -l app=ratings \
+            -o jsonpath='{.items[0].metadata.name}')" \
+            -c ratings -- \
+            curl productpage:9080/productpage | grep -qo "<title>.*</title>"
+    fi
 }
 
 teardown() {

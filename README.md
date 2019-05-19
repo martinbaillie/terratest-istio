@@ -5,6 +5,11 @@
 [![Codecov](https://codecov.io/gh/martinbaillie/terratest-istio/branch/master/graph/badge.svg)](https://codecov.io/gh/martinbaillie/terratest-istio)
 [![Go Report Card](https://goreportcard.com/badge/github.com/martinbaillie/terratest-istio)](https://goreportcard.com/report/github.com/martinbaillie/terratest-istio)
 
+| Supports | Istio 1.1.x   | Istio 1.0.x   | 
+| -------------|:-------------:|:-------------:|
+| **Go 1.12**  |:white_check_mark:|:construction:|
+| **Go 1.11**  |:white_check_mark:|:construction:|
+
 ## About
 
 An Istio module for the [Terratest](https://github.com/gruntwork-io/terratest) infrastructure testing library.
@@ -20,10 +25,6 @@ _Coming soon_
 
 ##### Pilot sync status
 _Coming soon_
-
-### Tested against
-- Go 1.12 [Istio 1.1.x]
-- Go 1.11 [Istio 1.1.x]
 
 ## Examples
 

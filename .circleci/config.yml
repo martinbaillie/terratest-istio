@@ -8,10 +8,14 @@ workflows:
   ci:
     jobs:
       - go/lint
-      - test-golang-1-11:
-          name: test-golang-1-11
-      - test-golang-1-12:
-          name: test-golang-1-12
+      #- test-golang-1-11-istio-1-0:
+          #name: test-golang-1-11-istio-1-0
+      - test-golang-1-11-istio-1-1:
+          name: test-golang-1-11-istio-1-1
+      #- test-golang-1-12-istio-1-0:
+          #name: test-golang-1-12-istio-1-0
+      - test-golang-1-12-istio-1-1:
+          name: test-golang-1-12-istio-1-1
 
 commands:
   integration_test:
@@ -19,6 +23,9 @@ commands:
       go_version:
         type: string
         default: "1.12"
+      istio_version:
+        type: string
+        default: "master"
     steps:
       - run:
           name: "Fixing directory ownership"
@@ -81,6 +88,8 @@ commands:
             - "/usr/local/bin/gotestsum"
       - run:
           name: "Setting up integration environment"
+          environment:
+            ISTIO_VERSION: << parameters.istio_version >>
           command: |
             hack/kind.sh setup >> $BASH_ENV
             source $BASH_ENV
@@ -103,7 +112,7 @@ commands:
             bash <(curl -s https://codecov.io/bash)
 
 jobs:
-  test-golang-1-12:
+  test-golang-1-12-istio-1-0:
     machine:
       enabled: true
       docker_layer_caching: true
@@ -111,7 +120,17 @@ jobs:
       - checkout
       - integration_test:
           go_version: "1.12.5"
-  test-golang-1-11:
+          istio_version: "1.0.7"
+  test-golang-1-12-istio-1-1:
+    machine:
+      enabled: true
+      docker_layer_caching: true
+    steps:
+      - checkout
+      - integration_test:
+          go_version: "1.12.5"
+          istio_version: "master"
+  test-golang-1-11-istio-1-0:
     machine:
       enabled: true
       docker_layer_caching: true
@@ -119,3 +138,13 @@ jobs:
       - checkout
       - integration_test:
           go_version: "1.11.10"
+          istio_version: "1.0.7"
+  test-golang-1-11-istio-1-1:
+    machine:
+      enabled: true
+      docker_layer_caching: true
+    steps:
+      - checkout
+      - integration_test:
+          go_version: "1.12.5"
+          istio_version: "master"

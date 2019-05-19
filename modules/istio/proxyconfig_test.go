@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -14,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Predicates:
+// Integration test pre-requisites:
 // - Local Kubernetes (KinD, minikube, K3s etc.).
 // - Istio BookInfo sample deployed to default namespace.
 
@@ -215,8 +214,8 @@ func wildcardForZeroValue(in string) string {
 
 func getBookInfoDetailsPod(t *testing.T) *corev1.Pod {
 	t.Helper()
-	options := k8s.NewKubectlOptions("", "")
-	detailsPods := k8s.ListPods(t, options, metav1.ListOptions{LabelSelector: "app=details"})
+	o := k8s.NewKubectlOptions("", "")
+	detailsPods := k8s.ListPods(t, o, metav1.ListOptions{LabelSelector: "app=details"})
 	require.Equal(t, len(detailsPods), 1)
 	return &detailsPods[0]
 }
