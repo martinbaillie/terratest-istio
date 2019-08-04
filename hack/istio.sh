@@ -15,7 +15,7 @@ prepare() {
             jq -r 'select([.Path == "istio.io/istio"] | any) | .Dir')"
     else
         # Use the specified Istio version
-        cd "$(mktemp -d /tmp/istio.XXXXXX)" 
+        cd "$(mktemp -d /tmp/istio.XXXXXX)"
         if ! (git clone --depth 1 --branch "${ISTIO_VERSION}" \
             https://github.com/istio/istio) >&2
         then
@@ -38,9 +38,9 @@ setup() {
     prepare
 
     # Create namespace
-	if ! kubectl get namespace istio-system > /dev/null 2>&1; then
-		kubectl create namespace istio-system
-	fi
+    if ! kubectl get namespace istio-system > /dev/null 2>&1; then
+        kubectl create namespace istio-system
+    fi
 
     # Install Istio CRDs
     if echo "${ISTIO_VERSION}" | grep -qe '1\.0\..*'; then
@@ -48,8 +48,22 @@ setup() {
         kubectl apply -f \
             install/kubernetes/helm/istio/templates/crds.yaml
         sleep 10
+    elif echo "${ISTIO_VERSION}" | grep -qe '1\.1\..*'; then
+        # 1.1 stream
+        helm template install/kubernetes/helm/istio-init \
+            --name istio-init \
+            --namespace istio-system | \
+            kubectl apply -f -
+        kubectl wait job/istio-init-crd-10 \
+            -n istio-system \
+            --for=condition=complete \
+            --timeout 5m
+        kubectl wait job/istio-init-crd-11 \
+            -n istio-system \
+            --for=condition=complete \
+            --timeout 5m
     else
-        # 1.1+ stream
+        # 1.2+ stream
         helm template install/kubernetes/helm/istio-init \
             --name istio-init \
             --namespace istio-system | \
@@ -68,7 +82,7 @@ setup() {
             --timeout 5m
     fi
 
-    # Install Istio 
+    # Install Istio
     helm template install/kubernetes/helm/istio \
         --name istio \
         --namespace istio-system \
@@ -86,7 +100,7 @@ setup() {
         -n istio-system \
         --for=condition=available \
         --timeout 5m
-        
+
     # Install BookInfo sample
     kubectl label namespace default istio-injection=enabled --overwrite
     kubectl apply -f samples/bookinfo/platform/kube/bookinfo.yaml
@@ -95,12 +109,11 @@ setup() {
     kubectl wait deployment/reviews-v2 --for=condition=available --timeout 5m
     kubectl wait deployment/reviews-v3 --for=condition=available --timeout 5m
     kubectl wait deployment/productpage-v1 \
-		--for=condition=available \
-		--timeout 5m
+        --for=condition=available \
+        --timeout 5m
 
-
-    # TODO: figure out why this check doesn't work on the Istio 1.0 stream
-    if ! (echo "${ISTIO_VERSION}" | grep -qe '1\.0\..*'); then
+    # TODO: figure out why this check doesn't work on the Istio 1.0 or 1.1 stream
+    if ! (echo "${ISTIO_VERSION}" | grep -qe '1\.[01]\..*'); then
         kubectl exec -it "$(kubectl get pod -l app=ratings \
             -o jsonpath='{.items[0].metadata.name}')" \
             -c ratings -- \

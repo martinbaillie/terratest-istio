@@ -5,10 +5,10 @@
 [![Codecov](https://codecov.io/gh/martinbaillie/terratest-istio/branch/master/graph/badge.svg)](https://codecov.io/gh/martinbaillie/terratest-istio)
 [![Go Report Card](https://goreportcard.com/badge/github.com/martinbaillie/terratest-istio)](https://goreportcard.com/report/github.com/martinbaillie/terratest-istio)
 
-| Supports | Istio 1.1.x   | Istio 1.0.x   | 
-| -------------|:-------------:|:-------------:|
-| **Go 1.12**  |:white_check_mark:|:construction:|
-| **Go 1.11**  |:white_check_mark:|:construction:|
+| Supports     | Istio 1.2.x   | Istio 1.1.x   | Istio 1.0.x   | 
+| -------------|:-------------:|:-------------:|:-------------:|
+| **Go 1.12**  |:white_check_mark:|:white_check_mark:|:construction:|
+| **Go 1.11**  |:white_check_mark:|:white_check_mark:|:construction:|
 
 ## About
 
@@ -20,11 +20,20 @@ An Istio module for the [Terratest](https://github.com/gruntwork-io/terratest) i
 - Marshaling into Envoy [Go control plane](https://github.com/envoyproxy/go-control-plane) objects.
 - Helper functions for checking key configuration attributes of sidecar Clusters/Listeners/Routes.
 
-##### RBAC
+##### Authn status
 _Coming soon_
+
+Check what authentication policies and destination rules Pilot uses to config a proxy instance, and check if TLS settings are compatible between them.
 
 ##### Pilot sync status
 _Coming soon_
+
+Check last sent and last acknowledged xDS sync from Pilot to each Envoy in the mesh.
+
+##### RBAC
+_Coming soon_
+
+Check the TLS/JWT/RBAC settings based on Envoy config
 
 ## Examples
 

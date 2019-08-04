@@ -12,10 +12,14 @@ workflows:
           #name: test-golang-1-11-istio-1-0
       - test-golang-1-11-istio-1-1:
           name: test-golang-1-11-istio-1-1
+      - test-golang-1-11-istio-1-2:
+          name: test-golang-1-11-istio-1-2
       #- test-golang-1-12-istio-1-0:
           #name: test-golang-1-12-istio-1-0
       - test-golang-1-12-istio-1-1:
           name: test-golang-1-12-istio-1-1
+      - test-golang-1-12-istio-1-2:
+          name: test-golang-1-12-istio-1-2
 
 commands:
   integration_test:
@@ -120,7 +124,7 @@ jobs:
       - checkout
       - integration_test:
           go_version: "1.12.5"
-          istio_version: "1.0.7"
+          istio_version: "1.0.9"
   test-golang-1-12-istio-1-1:
     machine:
       enabled: true
@@ -129,7 +133,16 @@ jobs:
       - checkout
       - integration_test:
           go_version: "1.12.5"
-          istio_version: "master"
+          istio_version: "1.1.12"
+  test-golang-1-12-istio-1-2:
+    machine:
+      enabled: true
+      docker_layer_caching: true
+    steps:
+      - checkout
+      - integration_test:
+          go_version: "1.12.5"
+          istio_version: "1.2.3"
   test-golang-1-11-istio-1-0:
     machine:
       enabled: true
@@ -138,7 +151,7 @@ jobs:
       - checkout
       - integration_test:
           go_version: "1.11.10"
-          istio_version: "1.0.7"
+          istio_version: "1.0.9"
   test-golang-1-11-istio-1-1:
     machine:
       enabled: true
@@ -146,5 +159,14 @@ jobs:
     steps:
       - checkout
       - integration_test:
-          go_version: "1.12.5"
-          istio_version: "master"
+          go_version: "1.11.10"
+          istio_version: "1.1.12"
+  test-golang-1-11-istio-1-2:
+    machine:
+      enabled: true
+      docker_layer_caching: true
+    steps:
+      - checkout
+      - integration_test:
+          go_version: "1.11.10"
+          istio_version: "1.2.3"

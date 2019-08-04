@@ -19,7 +19,7 @@ setup() {
     if ! kind --help > /dev/null 2>&1
     then
         #if ! (>&2 go get -u sigs.k8s.io/kind)
-        #https://github.com/kubernetes-sigs/kind/issues/508 
+        #https://github.com/kubernetes-sigs/kind/issues/508
         if ! (cd /tmp && git clone https://github.com/kubernetes-sigs/kind && \
                 cd kind && git checkout v0.2.1 && go install) >&2
         then
