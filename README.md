@@ -5,10 +5,10 @@
 [![Codecov](https://codecov.io/gh/martinbaillie/terratest-istio/branch/master/graph/badge.svg)](https://codecov.io/gh/martinbaillie/terratest-istio)
 [![Go Report Card](https://goreportcard.com/badge/github.com/martinbaillie/terratest-istio)](https://goreportcard.com/report/github.com/martinbaillie/terratest-istio)
 
-| Supports     | Istio 1.2.x   | Istio 1.1.x   | Istio 1.0.x   | 
-| -------------|:-------------:|:-------------:|:-------------:|
-| **Go 1.12**  |:white_check_mark:|:white_check_mark:|:construction:|
-| **Go 1.11**  |:white_check_mark:|:white_check_mark:|:construction:|
+| Supports     | Istio 1.3.x   | Istio 1.2.x   | Istio 1.1.x   | Istio 1.0.x   | 
+| -------------|:-------------:|:-------------:|:-------------:|:-------------:|
+| **Go 1.12**  |:white_check_mark:|:white_check_mark:|:construction:|:construction:|
+| **Go 1.11**  |:white_check_mark:|:white_check_mark:|:construction:|:construction:|
 
 ## About
 

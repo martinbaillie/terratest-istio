@@ -62,8 +62,8 @@ setup() {
             -n istio-system \
             --for=condition=complete \
             --timeout 5m
-    else
-        # 1.2+ stream
+    elif echo "${ISTIO_VERSION}" | grep -qe '1\.2\..*'; then
+        # 1.2 stream
         helm template install/kubernetes/helm/istio-init \
             --name istio-init \
             --namespace istio-system | \
@@ -77,6 +77,24 @@ setup() {
             --for=condition=complete \
             --timeout 5m
         kubectl wait job/istio-init-crd-12 \
+            -n istio-system \
+            --for=condition=complete \
+            --timeout 5m
+    else
+        # 1.3+ streams (untagged release/master)
+        helm template install/kubernetes/helm/istio-init \
+            --name istio-init \
+            --namespace istio-system | \
+            kubectl apply -f -
+        kubectl wait job/istio-init-crd-10-master-latest-daily \
+            -n istio-system \
+            --for=condition=complete \
+            --timeout 5m
+        kubectl wait job/istio-init-crd-11-master-latest-daily \
+            -n istio-system \
+            --for=condition=complete \
+            --timeout 5m
+        kubectl wait job/istio-init-crd-12-master-latest-daily \
             -n istio-system \
             --for=condition=complete \
             --timeout 5m
