@@ -206,6 +206,11 @@ func TestIsRoutesConfigRoutingTo(t *testing.T) {
 	}
 }
 
+func TestArePilotsSyncedToPod(t *testing.T) {
+	t.Parallel()
+	require.True(t, ArePilotsSyncedToPod(t, nil, getBookInfoDetailsPod(t).Name))
+}
+
 func wildcardForZeroValue(in string) string {
 	if in == "" || in == "0" {
 		in = "*"

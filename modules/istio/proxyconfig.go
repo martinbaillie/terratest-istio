@@ -2,6 +2,7 @@ package istio
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/logger"
@@ -9,6 +10,7 @@ import (
 
 	"istio.io/istio/istioctl/pkg/kubernetes"
 	"istio.io/istio/istioctl/pkg/util/configdump"
+	"istio.io/istio/istioctl/pkg/writer/compare"
 	"istio.io/istio/pilot/pkg/model"
 
 	adminv2 "github.com/envoyproxy/go-control-plane/envoy/admin/v2alpha"
@@ -34,12 +36,12 @@ func GetBootstrapConfigDumpForPod(
 // https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-bootstrapconfigdump
 func GetBootstrapConfigDumpForPodE(
 	t *testing.T, o *Options, pod string) (*adminv2.BootstrapConfigDump, error) {
-	cw, err := configDumpForPod(t, o, pod)
+	cd, err := configDumpForPod(t, o, pod)
 	if err != nil {
 		return nil, err
 	}
 
-	return cw.GetBootstrapConfigDump()
+	return cd.GetBootstrapConfigDump()
 }
 
 // GetClustersConfigDumpForPod queries the pod's Envoy sidecar for currently
@@ -58,12 +60,12 @@ func GetClustersConfigDumpForPod(t *testing.T, o *Options, pod string) *adminv2.
 // https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-clustersconfigdump
 func GetClustersConfigDumpForPodE(
 	t *testing.T, o *Options, pod string) (*adminv2.ClustersConfigDump, error) {
-	cw, err := configDumpForPod(t, o, pod)
+	cd, err := configDumpForPod(t, o, pod)
 	if err != nil {
 		return nil, err
 	}
 
-	return cw.GetClusterConfigDump()
+	return cd.GetClusterConfigDump()
 }
 
 // GetListenersConfigDumpForPod queries the pod's Envoy sidecar for currently
@@ -83,12 +85,12 @@ func GetListenersConfigDumpForPod(
 // https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-listenersconfigdump
 func GetListenersConfigDumpForPodE(
 	t *testing.T, o *Options, pod string) (*adminv2.ListenersConfigDump, error) {
-	cw, err := configDumpForPod(t, o, pod)
+	cd, err := configDumpForPod(t, o, pod)
 	if err != nil {
 		return nil, err
 	}
 
-	return cw.GetListenerConfigDump()
+	return cd.GetListenerConfigDump()
 }
 
 // GetRoutesConfigDumpForPod queries the pod's Envoy sidecar for currently
@@ -108,12 +110,12 @@ func GetRoutesConfigDumpForPod(t *testing.T, o *Options, pod string) *adminv2.Ro
 // https://www.envoyproxy.io/docs/envoy/latest/api-v2/admin/v2alpha/config_dump.proto#admin-v2alpha-routesconfigdump
 func GetRoutesConfigDumpForPodE(
 	t *testing.T, o *Options, pod string) (*adminv2.RoutesConfigDump, error) {
-	cw, err := configDumpForPod(t, o, pod)
+	cd, err := configDumpForPod(t, o, pod)
 	if err != nil {
 		return nil, err
 	}
 
-	return cw.GetRouteConfigDump()
+	return cd.GetRouteConfigDump()
 }
 
 // IsClustersConfigClusteredTo returns true if the Envoy config has a cluster
@@ -210,8 +212,59 @@ func routeConfigVHostNameMatches(routeConfig *apiv2.RouteConfiguration, vhostNam
 	return false
 }
 
-// configDumpForPod dumps the Istio Envoy proxy configuration for a pod.
+// ArePilotsSyncedToPod diffs the Istio Pilot(s) view of an Envoy proxy's
+// configuration with the actual configuration exhibited by the proxy. The
+// function returns true if everything is in sync, false if not, and uses
+// stdout to display differences. If anything goes wrong during comparison
+// it will automatically fail the test.
+func ArePilotsSyncedToPod(t *testing.T, o *Options, pod string) bool {
+	d, err := ArePilotsSyncedToPodE(t, o, pod)
+	require.NoError(t, err)
+	return d
+}
+
+// ArePilotsSyncedToPodE diffs the Istio Pilot(s) view of an Envoy proxy's
+// configuration with the actual configuration exhibited by the proxy. The
+// function returns true if everything is in sync, false if not, and uses
+// stdout to display differences.
+func ArePilotsSyncedToPodE(t *testing.T, o *Options, pod string) (bool, error) {
+	proxyBytes, err := configBytesFromProxy(t, o, pod)
+	if err != nil {
+		return false, err
+	}
+
+	pilotBytes, err := configBytesFromPilots(t, o, pod)
+	if err != nil {
+		return false, err
+	}
+
+	c, err := compare.NewComparator(os.Stdout, pilotBytes, proxyBytes)
+	if err != nil {
+		return false, err
+	}
+
+	err = c.Diff()
+	return err == nil, err
+}
+
+// configDumpForPod gets the unmarshaled JSON configuration for a pod.
 func configDumpForPod(t *testing.T, o *Options, pod string) (*configdump.Wrapper, error) {
+	t.Helper()
+
+	b, err := configBytesFromProxy(t, o, pod)
+	if err != nil {
+		return nil, err
+	}
+
+	cd := &configdump.Wrapper{}
+	if err := cd.UnmarshalJSON(b); err != nil {
+		return nil, err
+	}
+	return cd, nil
+}
+
+// configBytesFromProxy dumps the Istio Envoy proxy configuration from a pod.
+func configBytesFromProxy(t *testing.T, o *Options, pod string) ([]byte, error) {
 	t.Helper()
 
 	if o == nil {
@@ -223,15 +276,29 @@ func configDumpForPod(t *testing.T, o *Options, pod string) (*configdump.Wrapper
 		return nil, err
 	}
 
-	logger.Logf(t, "Gathering proxy config dump from Envoy sidecar of pod: %s", pod)
-	b, err := kubeClient.EnvoyDo(pod, o.Namespace, "GET", "config_dump", nil)
+	logger.Logf(t, "Gathering proxy config from Envoy sidecar of pod: %s", pod)
+	return kubeClient.EnvoyDo(pod, o.Namespace, "GET", "config_dump", nil)
+}
+
+// configBytesFromPilots dumps the Istio Envoy proxy configuration for
+// a pod from the perspective of the Istio Pilots.
+func configBytesFromPilots(t *testing.T, o *Options, pod string) (
+	map[string][]byte, error) {
+	t.Helper()
+
+	if o == nil {
+		o = NewOptions("", "")
+	}
+
+	kubeClient, err := kubernetes.NewClient(o.ConfigPath, o.ContextName)
 	if err != nil {
 		return nil, err
 	}
 
-	cw := &configdump.Wrapper{}
-	if err := cw.UnmarshalJSON(b); err != nil {
-		return nil, err
-	}
-	return cw, nil
+	logger.Logf(t, "Gathering proxy config from Pilot(s) for pod: %s", pod)
+	return kubeClient.AllPilotsDiscoveryDo(
+		o.IstioNamespace,
+		"GET",
+		fmt.Sprintf("/debug/config_dump?proxyID=%s.%s", pod, o.Namespace),
+		nil)
 }
